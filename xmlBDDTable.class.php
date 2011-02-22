@@ -322,7 +322,7 @@ class xmlBDDTable
 							if( is_array($valeur) )
 							{
 								// Application de l'opérateur
-								if( $this->op($valeur['op'],$valeur['val'],$val) !== true)
+								if( $this->op($valeur['op'],$val,$valeur['val']) !== true)
 								{
 									$trouve = false;
 									break;
@@ -444,6 +444,11 @@ class xmlBDDTable
 						throw new xmlBDDException("xmlBDDTable::update() : Le champs `%1` n'existe pas dans la table `%2`.",$champs,$this->_tableNom);
 						return false;
 					}
+					if( is_array($valeur) && (!isSet($valeur['op']) || !isSet($valeur['val']) || (isSet($valeur['op']) && (!in_array($valeur['op'],array('>','<',">=","<=",'=',"!=")) && $valeur['op'] != "like"))) )
+					{
+						throw new xmlBDDException("xmlBDDTable::update() : La condition where est incorrecte.");
+						return false;
+					}
 				}
 				// Parcours des n-uplets
 				if( isSet($this->_contenu->nuplet) )
@@ -467,10 +472,23 @@ class xmlBDDTable
 							$trouve = true;
 							foreach($where as $nom => $valeur)
 							{
-								if( $this->_contenu->nuplet[$i]->$nom != $valeur )
+								$val =$this->_contenu->nuplet[$i]->$nom;
+								if( is_array($valeur) )
 								{
-									$trouve = false;
-									break;
+									// Application de l'opérateur
+									if( $this->op($valeur['op'],$val,$valeur['val']) !== true)
+									{
+										$trouve = false;
+										break;
+									}
+								}
+								else
+								{
+									if( $this->_contenu->nuplet[$i]->$nom != $valeur )
+									{
+										$trouve = false;
+										break;
+									}
 								}
 							}
 							if( $trouve === true )
@@ -510,6 +528,11 @@ class xmlBDDTable
 					throw new xmlBDDException("xmlBDDTable::update() : Le champs `%1` n'existe pas dans la table `%2`.",$champs,$this->_tableNom);
 					return false;
 				}
+				if( is_array($valeur) && (!isSet($valeur['op']) || !isSet($valeur['val']) || (isSet($valeur['op']) && (!in_array($valeur['op'],array('>','<',">=","<=",'=',"!=")) && $valeur['op'] != "like"))) )
+				{
+					throw new xmlBDDException("xmlBDDTable::delete() : La condition where est incorrecte.");
+					return false;
+				}
 			}
 			// Parcours des n-uplets
 			if( isSet($this->_contenu->nuplet) )
@@ -530,10 +553,23 @@ class xmlBDDTable
 						$trouve = true;
 						foreach($where as $nom => $valeur)
 						{
-							if( $this->_contenu->nuplet[$i]->$nom != $valeur )
+							$val =$this->_contenu->nuplet[$i]->$nom;
+							if( is_array($valeur) )
 							{
-								$trouve = false;
-								break;
+								// Application de l'opérateur
+								if( $this->op($valeur['op'],$val,$valeur['val']) !== true)
+								{
+									$trouve = false;
+									break;
+								}
+							}
+							else
+							{
+								if( $this->_contenu->nuplet[$i]->$nom != $valeur )
+								{
+									$trouve = false;
+									break;
+								}
 							}
 						}
 						if( $trouve === true )
@@ -598,7 +634,7 @@ class xmlBDDTable
 		}
 	}
 
-	private function op($op,$val1,$val2)
+	private function op($op,$v1,$v2)
 	{
 		switch($op)
 		{
@@ -608,7 +644,7 @@ class xmlBDDTable
 			case '>=' : return $v1 >= $v2;
 			case '<' : return $v1 < $v2;
 			case '<=' : return $v1 <= $v2;
-			case 'like' : return $this->like($v1,$v2);
+			case 'like' : return $this->like($v2,$v1);
 			default : return false;
 		}
 

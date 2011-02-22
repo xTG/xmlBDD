@@ -26,13 +26,16 @@ class xmlBDD
 	*/
 	private $_bddTables = array();
 
+	private $_messages = array();
+
 	/*
 	* Constructeur
 	* @param String lien vers la base de donnée (dossier)
 	* @param Bool (facultatif,false) charger toutes les tables en mémoire à la création de l'objet
 	* @param Bool (facultatif,false) création de la base de donnée
+	* @param Bool (facultatif,true) création d'un fichier .htaccess lors de la création de la bdd
 	*/
-	public function __construct($bdd, $chargerTable = false, $creation = false)
+	public function __construct($bdd, $chargerTable = false, $creation = false, $htaccess = true)
 	{
 		// Inclusion de la class xmlBDDException
 		require_once("xmlBDDException.class.php");
@@ -51,6 +54,11 @@ class xmlBDD
 		if( !is_bool($creation) )
 		{
 			throw new xmlBDDException("xmlBDD::__construct()@param creation : type Bool");
+			return;
+		}
+		if( !is_bool($htaccess) )
+		{
+			throw new xmlBDDException("xmlBDD::__construct()@param htaccess : type Bool");
 			return;
 		}
 
@@ -82,6 +90,44 @@ class xmlBDD
 			}
 			else // Erreur : la bdd n'existe pas
 				throw new xmlBDDException("xmlBDD::__construct() : La base de donnée `%1` n'existe pas.",$this->_bddNom);
+		}
+		else
+		{
+			// Création de la bdd
+			if( is_dir($bdd) )
+			{
+				// Elle existe déjà, on la supprime et on la recréé
+				$fichiers = glob($bdd . "/*");
+				$creation = true;
+				foreach($fichiers as $f)
+				{
+					$retour = @unlink($f);
+					if( $retour === false )
+						$creation = false;
+				}
+				// suppression du htaccess
+				@unlink($bdd . "/.htaccess");
+				$retour = rmdir($bdd);
+				if( $retour === false )
+					$creation = false;
+			}
+			// Création de la bdd
+			$retour = mkdir($bdd,"777");
+			if( $htaccess === true )
+			{
+				// création du htaccess
+				$contenu = "deny from all";
+				$fhtaccess = fopen($bdd . "/.htaccess","a+");
+				if( $fhtaccess !== false )
+				{
+					fprintf($fhtaccess,"%s",$contenu);
+					fclose($fhtaccess);
+					$this->_messages['htaccess'] = true;
+				}
+			}
+			if( $retour === false )
+				$creation = false;
+			$this->_messages['creation'] = $creation;
 		}
 	}
 
@@ -249,5 +295,20 @@ class xmlBDD
 		return false;
 	}
 
+	/*
+	* Retourne un message d'information
+	* @param String nom du message
+	* @return mixed/array(mixed) si aucun nom de message n'est passé en paramètre tous les messages seront renvoyés.
+	*/
+	public function getMessage($index = "")
+	{
+		if( $index == "" )
+			return $this->_messages;
+
+		if( isSet($this->_messages[$index]) )
+			return $this->_messages[$index];
+		else
+			return "";
+	}
 }
 ?>
